@@ -10,9 +10,9 @@
 
 * 克隆本仓库到本地
 
-```bash
+  ```bash
   git clone https://github.com/2ySong/TimeGrad-re.git
-```
+  ```
 
 * 安装依赖：
 
