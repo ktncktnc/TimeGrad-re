@@ -8,7 +8,11 @@
 
 ## 使用方法
 
+<<<<<<< HEAD
 * 克隆本仓库到本地：
+=======
+- 克隆本仓库到本地：
+>>>>>>> 44f6f6b95ff6b6bdc85a3aae93046466ea0d73e6
 
   ```bash
   git clone https://github.com/2ySong/TimeGrad-re.git
