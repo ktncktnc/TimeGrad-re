@@ -1,6 +1,6 @@
 # TimeGrad 复现代码仓库
 
-该仓库用于存放复现论文 "TimeGrad: A Time-Dependent Gradient Method for Sequential Data" 的代码。
+该仓库用于存放复现论文 "TimeGrad: Autoregressive Denoising Diffusion Models for Multivariate Probabilistic Time Series Forecasting" 的代码。
 
 ## 简介
 
@@ -8,23 +8,21 @@
 
 ## 使用方法
 
-1. 克隆本仓库到本地：
+* 克隆本仓库到本地：
 
-   ```bash
-   git clone https://github.com/your-username/TimeGrad-re.git
-   ```
+  ```bash
+  git clone https://github.com/2ySong/TimeGrad-re.git
+  ```
+* 安装依赖：
 
-2. 安装依赖：
+  ```bash
+  pip install -r requirements.txt
+  ```
+* 运行代码：
 
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. 运行代码：
-
-   ```bash
-   python main.py
-   ```
+  ```bash
+  python main.py
+  ```
 
 ## 贡献
 
