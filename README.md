@@ -1,28 +1,35 @@
-# 论文代码地址 👋
+# TimeGrad 复现代码仓库
 
-## AI for TSF
+该仓库用于存放复现论文 "TimeGrad: A Time-Dependent Gradient Method for Sequential Data" 的代码。
 
-1. [TimeGrad](https://github.com/zalandoresearch/pytorch-ts)
+## 简介
 
-2. [TimeSeriesResearch](https://github.com/BTDLOZC-SJTU/TimeSeriesResearch)
+"TimeGrad" 是一种针对时序数据的梯度方法，旨在优化时序数据的训练和预测任务。本仓库提供了复现该方法所需的代码和相关资源。
 
-3. [CSDI](https://github.com/ermongroup/CSDI)
+## 使用方法
 
-4. [GluonTS](https://github.com/awslabs/gluonts)
+1. 克隆本仓库到本地：
 
-## Diffusion
+   ```bash
+   git clone https://github.com/your-username/TimeGrad-re.git
+   ```
 
-1. [Pytorch-DDPM](https://github.com/CHAINNEVERLIU/Pytorch-DDPM)
+2. 安装依赖：
 
-## 通信相关
-1. [MIMO Channel Estimation using Score-Based (Diffusion) Generative Models](https://github.com/utcsilab/score-based-channels)
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-2. [Multi-Cell Multi-Beam Prediction Using Auto-Encoder LSTM for mmWave Systems](https://github.com/shastpi/mmWave-ray-tracer-dataset)
-   - 只有数据集，没有代码
+3. 运行代码：
 
-## Datasets
+   ```bash
+   python main.py
+   ```
 
-1. [multivariate-time-series-data](https://github.com/laiguokun/multivariate-time-series-data)
+## 贡献
 
-## MYCode for TSF
-1. [myDL](https://github.com/2ySong/myDL)
+欢迎对该复现代码仓库进行贡献。如果您发现了任何问题或有改进建议，请提交 issue 或发起 pull 请求。
+
+## 许可证
+
+该项目采用 MIT 许可证。详情请参阅 [LICENSE](LICENSE) 文件。
