@@ -9,7 +9,7 @@
 
 ## 指标分析：
 
-```json
+```txt
 Electricity Results
 CRPS: 0.07341295439714754
 ND: 0.0939845166946646
