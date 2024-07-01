@@ -1,7 +1,7 @@
 
 ## 运行成功的笔记本：
 
-- 笔记本名称：Time-Grad-Electricity.ipynb
+- 笔记本名称：`Time-Grad-Electricity.ipynb`
 
 - 运行成功日期：2024-06-30_22:28:20
 
