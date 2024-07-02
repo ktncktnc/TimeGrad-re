@@ -8,6 +8,8 @@
 
 - gluonts: 0.14.4
 
+- lightning: 2.3.1
+
 
 
 ## 原有数据集
