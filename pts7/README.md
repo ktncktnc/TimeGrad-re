@@ -27,7 +27,7 @@
 
 ## 自定义数据集
 
-### 1. 自定义数据集：`Diabetes.csv`
+### 1. 数据集：`Diabetes.csv`
 
 - 描述：
 
@@ -38,3 +38,16 @@
 - 笔记本名称：`Time-Grad-Diabetes.ipynb`
 
 - 运行成功日期：2024-07-01_16:39:50
+
+### 2. 数据集：`my_groundtruth.csv`
+
+- 描述：
+
+    - NLCT数据集
+
+    - 8w+个时间序列，每个时间序列有7个特征.
+- 下载地址：[百度网盘](https://pan.baidu.com/s/1JVlX7kEmTWaKyr-ZMd1R5g?pwd=kv30) 
+
+- 笔记本名称：`Time-Grad-NlctGt.ipynb`
+
+- 运行成功日期：2024-07-02_02:38:29
