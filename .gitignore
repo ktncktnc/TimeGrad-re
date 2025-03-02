@@ -1,0 +1,6 @@
+lightning_logs
+checkpoints
+pts7
+**/__pycache__
+**/*.pyc
+stdout
