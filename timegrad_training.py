@@ -6,6 +6,7 @@ import argparse
 import torch
 import os
 from datetime import datetime
+import random
 
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import WandbLogger
@@ -14,6 +15,7 @@ from gluonts.dataset.multivariate_grouper import MultivariateGrouper
 from gluonts.dataset.repository.datasets import dataset_recipes, get_dataset
 from gluonts.evaluation import MultivariateEvaluator
 from gluonts.dataset.split import split
+from gluonts.dataset.common import ListDataset
 from gluonts.evaluation.backtest import _to_dataframe
 from gluonts.evaluation import MultivariateEvaluator
 from gluonts.torch.model.predictor import PyTorchPredictor
@@ -31,9 +33,11 @@ from diffusers import DEISMultistepScheduler
 
 def parse_args():
     parser = argparse.ArgumentParser(description='TimeGrad forecasting with configurable parameters')
+
+    parser.add_argument('--seed', type=int, default=42,)
     
     # Dataset parameters
-    parser.add_argument('--dataset', type=str, default='electricity_nips', 
+    parser.add_argument('--dataset', type=str, default='electricity', 
                         help='Dataset name from GluonTS repository')
     parser.add_argument('--prediction_length', type=int, default=48,
                         help='Prediction horizon length')
@@ -59,7 +63,7 @@ def parse_args():
                         help='Number of inference steps')
     
     # Training parameters
-    parser.add_argument('--max_epochs', type=int, default=20,
+    parser.add_argument('--max_epochs', type=int, default=40,
                         help='Maximum number of training epochs')
     parser.add_argument('--accelerator', type=str, default='gpu',
                         help='Accelerator type for PyTorch Lightning')
@@ -129,8 +133,39 @@ def make_evaluation_predictions(
     )
 
 
+def normalize_dataset(dataset, mean=None, std=None):
+    # Get the frequency from the first entry instead of from the dataset
+    freq = list(dataset)[0]["start"].freq
+    
+    # First, we need to collect all values to compute mean and std
+    if mean is None or std is None:
+        mean = []
+        std = []
+        
+        for entry in dataset:
+            mean.append(entry["target"].mean())
+            std.append(entry["target"].std())
+        
+    # Create a new normalized dataset
+    normalized_data = []
+    for i, entry in enumerate(dataset):
+        # Create a copy of the entry
+        normalized_entry = dict(entry)
+        # Normalize the target values: (x - mean) / std
+        normalized_entry["target"] = (entry["target"] - mean[entry['feat_static_cat'][0]]) / std[entry['feat_static_cat'][0]]
+        normalized_data.append(normalized_entry)
+    
+    # Return the normalized dataset and the normalization parameters
+    return ListDataset(normalized_data, freq=freq), mean, std
+
+
 def main():
     args = parse_args()
+
+    # Set seed
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
     
     # Parse lags_seq from string to list
     try:
@@ -148,21 +183,32 @@ def main():
     
     # Load dataset
     print(f"Loading dataset: {args.dataset}")
-    dataset = get_dataset(args.dataset, regenerate=False, prediction_length=args.prediction_length)
+    dataset = get_dataset(args.dataset, regenerate=True, prediction_length=args.prediction_length)
+
+    train_ds_normalized, mean, std = normalize_dataset(dataset.train)
+    test_ds_normalized, _, _ = normalize_dataset(dataset.test, mean, std)
+
+    print('train_ds_normalized', train_ds_normalized[0]['target'])
+    print('test_ds_normalized', test_ds_normalized[0]['target'])
+
+    # print('scaler', scaler.mean_, scaler.var_)
     
     # Create groupers
     max_target_dim = min(2000, int(dataset.metadata.feat_static_cat[0].cardinality))
     train_grouper = MultivariateGrouper(max_target_dim=max_target_dim)
     
     test_grouper = MultivariateGrouper(
-        num_test_dates=int(len(dataset.test)/len(dataset.train)),
+        num_test_dates=int(len(test_ds_normalized)/len(train_ds_normalized)),
         max_target_dim=max_target_dim
     )
     
     # Apply groupers
-    dataset_train = train_grouper(dataset.train)
-    dataset_test = test_grouper(dataset.test)
+    dataset_train = train_grouper(train_ds_normalized)
+    dataset_test = test_grouper(test_ds_normalized)
     
+    # dataset_train = train_grouper(dataset.train)
+    # dataset_test = test_grouper(dataset.test)
+
     print(f"Train dataset size: {len(dataset_train)}")
     print(f"Test dataset size: {len(dataset_test)}")
     
@@ -173,14 +219,19 @@ def main():
     )
     
     # Setup logging and checkpointing
-    run_name = f"timgrad_{args.dataset}_{args.context_length}_{args.prediction_length}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    run_name = f"timgrad_{args.dataset}_{args.context_length}_{args.prediction_length}_{args.seed}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     
     # Create directories if they don't exist
     os.makedirs(args.log_dir, exist_ok=True)
     os.makedirs(args.ckpt_dir, exist_ok=True)
     
+    class LossCheckpoint(ModelCheckpoint):
+        @property
+        def state_key(self):
+            return "LossCheckpoint"  # Đặt state_key riêng cho checkpoint theo val_loss
+        
     # Create checkpoint callback
-    checkpoint_callback = ModelCheckpoint(
+    checkpoint_callback = LossCheckpoint(
         dirpath=os.path.join(args.ckpt_dir, run_name),
         filename='{epoch}-{train_loss:.4f}',
         monitor=args.monitor,
@@ -194,8 +245,9 @@ def main():
         'max_epochs': args.max_epochs,
         'accelerator': args.accelerator,
         'devices': args.devices,
-        #'callbacks': [checkpoint_callback],
+        'callbacks': [checkpoint_callback],
         'default_root_dir': args.log_dir,
+        'enable_progress_bar': False
     }
     
     # Add WandB logger if enabled
@@ -232,7 +284,7 @@ def main():
         prediction_length=args.prediction_length,
         context_length=args.context_length,
         freq=dataset.metadata.freq,
-        scaling=args.scaling,
+        scaling=None,
         trainer_kwargs=trainer_kwargs,
     )
     
@@ -273,23 +325,27 @@ def main():
     target_tensors = torch.stack(target_tensors)
     pred_tensors = torch.stack(pred_tensors)
     
+    print('pred', pred_tensors)
+    print('target', target_tensors)
     print('pred_tensors', pred_tensors.shape)
     print('target_tensors', target_tensors.shape)
+    
     # Calculate metrics
     custom_metrics = get_metrics(pred_tensors, target_tensors)
 
     # Calculate GluonTS metrics
-    agg_metric, item_metrics = evaluator(targets, forecasts, num_series=len(dataset_test))
+    # agg_metric, item_metrics = evaluator(targets, forecasts, num_series=len(dataset_test))
     
-    # Prepare results
-    results = {
-        "CRPS": agg_metric["mean_wQuantileLoss"],
-        "ND": agg_metric["ND"],
-        "NRMSE": agg_metric["NRMSE"],
-        "CRPS-Sum": agg_metric["m_sum_mean_wQuantileLoss"],
-        "ND-Sum": agg_metric["m_sum_ND"],
-        "NRMSE-Sum": agg_metric["m_sum_NRMSE"]
-    }
+    # # Prepare results
+    # results = {
+    #     "CRPS": agg_metric["mean_wQuantileLoss"],
+    #     "ND": agg_metric["ND"],
+    #     "NRMSE": agg_metric["NRMSE"],
+    #     "CRPS-Sum": agg_metric["m_sum_mean_wQuantileLoss"],
+    #     "ND-Sum": agg_metric["m_sum_ND"],
+    #     "NRMSE-Sum": agg_metric["m_sum_NRMSE"],
+    #     "MSE": agg_metric["MSE"],
+    # }
     
     print('pred_tensors', pred_tensors.shape)
     print('target_tensors', target_tensors.shape)
@@ -299,19 +355,20 @@ def main():
         print(f"{key}: {value}")
     
     # Print results
-    print(f"\n{args.dataset.capitalize()} Results:")
-    print("CRPS:", results["CRPS"])
-    print("ND:", results["ND"])
-    print("NRMSE:", results["NRMSE"])
-    print("")
-    print("CRPS-Sum:", results["CRPS-Sum"])
-    print("ND-Sum:", results["ND-Sum"])
-    print("NRMSE-Sum:", results["NRMSE-Sum"])
+    # print(f"\n{args.dataset.capitalize()} Results:")
+    # print("CRPS:", results["CRPS"])
+    # print("ND:", results["ND"])
+    # print("NRMSE:", results["NRMSE"])
+    # print("")
+    # print("CRPS-Sum:", results["CRPS-Sum"])
+    # print("ND-Sum:", results["ND-Sum"])
+    # print("NRMSE-Sum:", results["NRMSE-Sum"])
+    # print("MSE:", results["MSE"])
     
     # Log to wandb if enabled
-    if args.wandb and 'wandb_logger' in locals():
-        wandb_logger.log_metrics(results)
-        wandb_logger.experiment.finish()
+    # if args.wandb and 'wandb_logger' in locals():
+    #     wandb_logger.log_metrics(results)
+    #     wandb_logger.experiment.finish()
 
 if __name__ == "__main__":
     main()
