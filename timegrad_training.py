@@ -13,7 +13,6 @@ from lightning.pytorch.loggers import WandbLogger
 
 from gluonts.dataset.multivariate_grouper import MultivariateGrouper
 from gluonts.dataset.repository.datasets import dataset_recipes, get_dataset
-from gluonts.evaluation import MultivariateEvaluator
 from gluonts.dataset.split import split
 from gluonts.dataset.common import ListDataset
 from gluonts.evaluation.backtest import _to_dataframe
@@ -31,7 +30,7 @@ from diffusers import DEISMultistepScheduler
 
 
 
-def parse_args():
+def parse_args(input_args=None):
     parser = argparse.ArgumentParser(description='TimeGrad forecasting with configurable parameters')
 
     parser.add_argument('--seed', type=int, default=42,)
@@ -97,7 +96,7 @@ def parse_args():
     parser.add_argument('--checkpoint', type=str, default=None,
                         help='Path to model checkpoint file to load for testing (skips training)')
     
-    return parser.parse_args()
+    return parser.parse_args(input_args)
 
 def calculate_percentage_offset(dataset, test_percentage):
     """Calculate offset based on percentage of time series length"""
@@ -183,7 +182,7 @@ def main():
     
     # Load dataset
     print(f"Loading dataset: {args.dataset}")
-    dataset = get_dataset(args.dataset, regenerate=True, prediction_length=args.prediction_length)
+    dataset = get_dataset(args.dataset, regenerate=False, prediction_length=args.prediction_length)
 
     train_ds_normalized, mean, std = normalize_dataset(dataset.train)
     test_ds_normalized, _, _ = normalize_dataset(dataset.test, mean, std)
